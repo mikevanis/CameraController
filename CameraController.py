@@ -2,8 +2,10 @@ import threading
 import cv2
 import numpy as np
 import imutils
+import time
 try:
     import picamera
+    import picamera.array
     picamera_exists = True
 except ImportError:
     picamera_exists = False
@@ -25,6 +27,18 @@ class CameraController(threading.Thread):
         if picamera_exists:
             # Use pi camera
             print("INFO: picamera module exists.")
+            camera = picamera.PiCamera()
+            camera.framerate = 30
+
+            if use_splitter_port is True:
+                print("INFO: Using splitter port")
+            else:
+                camera.resolution = (320, 240)
+                self.picamera_capture = picamera.array.PiRGBArray(camera)
+                self.picamera_stream = camera.capture_continuous(self.picamera_capture, format="bgr",
+                                                                 use_video_port=True)
+                time.sleep(2)
+
         else:
             # Use webcam
             print("INFO: picamera module not found. Using oCV VideoCapture instead.")
@@ -44,7 +58,17 @@ class CameraController(threading.Thread):
         while not self.is_stopped():
             if picamera_exists:
                 # Get image from Pi camera
-                pass
+                if self.use_splitter_port:
+                    pass
+                else:
+                    s = self.picamera_stream.next()
+                    self.image = s.array
+                    picamera_capture.truncate(0)
+                    picamera_capture.seek(0)
+
+                if self.image is None:
+                    print("WARNING: Got empty image.")
+
             else:
                 # Get image from webcam
                 if self.use_splitter_port:
