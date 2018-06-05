@@ -3,11 +3,13 @@ import cv2
 import numpy as np
 import imutils
 import time
+import logging
 try:
     import picamera
     import picamera.array
     picamera_exists = True
 except ImportError:
+    picamera = None
     picamera_exists = False
 
 
@@ -24,16 +26,30 @@ class CameraController(threading.Thread):
         self.splitter_width = splitter_width
         self.splitter_height = splitter_height
 
+        # Truncate and open log file
+        with open('camera_controller.log', 'w'):
+            pass
+        logging.basicConfig(filename='camera_controller.log', level=logging.DEBUG)
+
         if picamera_exists:
             # Use pi camera
-            print("INFO: picamera module exists.")
+            logging.info("picamera module exists.")
             camera = picamera.PiCamera()
             camera.framerate = 30
 
             if use_splitter_port is True:
-                print("INFO: Using splitter port")
+                logging.info("Using splitter port")
+                camera.resolution = (self.splitter_width, self.splitter_height)
+                self.picamera_splitter_capture = picamera.array.PiRGBArray(camera)
+                self.picamera_capture = picamera.array.PiRGBArray(camera, size=(self.width, self.height))
+                self.picamera_splitter_stream = camera.capture_continuous(self.picamera_splitter_capture, format="bgr",
+                                                                          use_video_port=True)
+                self.picamera_stream = camera.capture_continuous(self.picamera_capture, format="bgr",
+                                                                 use_video_port=True, splitter_port=2,
+                                                                 resize=(self.width, self.height))
+
             else:
-                camera.resolution = (320, 240)
+                camera.resolution = (self.width, self.height)
                 self.picamera_capture = picamera.array.PiRGBArray(camera)
                 self.picamera_stream = camera.capture_continuous(self.picamera_capture, format="bgr",
                                                                  use_video_port=True)
@@ -41,10 +57,11 @@ class CameraController(threading.Thread):
 
         else:
             # Use webcam
-            print("INFO: picamera module not found. Using oCV VideoCapture instead.")
+            logging.info("picamera module not found. Using oCV VideoCapture instead.")
             self.capture = cv2.VideoCapture(0)
 
             if use_splitter_port is True:
+                logging.info("Using splitter port")
                 self.capture.set(3, splitter_width)
                 self.capture.set(4, splitter_height)
             else:
@@ -58,16 +75,13 @@ class CameraController(threading.Thread):
         while not self.is_stopped():
             if picamera_exists:
                 # Get image from Pi camera
-                if self.use_splitter_port:
-                    pass
-                else:
-                    s = self.picamera_stream.next()
-                    self.image = s.array
-                    picamera_capture.truncate(0)
-                    picamera_capture.seek(0)
+                s = self.picamera_stream.next()
+                self.image = s.array
+                self.picamera_capture.truncate(0)
+                self.picamera_capture.seek(0)
 
                 if self.image is None:
-                    print("WARNING: Got empty image.")
+                    logging.warning("Got empty image.")
 
             else:
                 # Get image from webcam
@@ -78,7 +92,7 @@ class CameraController(threading.Thread):
                     ret, self.image = self.capture.read()
 
                 if self.image is None:
-                    print("WARNING: Got empty image.")
+                    logging.warning("Got empty image.")
 
     def stop(self):
         self._stop_event.set()
@@ -90,7 +104,7 @@ class CameraController(threading.Thread):
             # Close webcam
             cv2.VideoCapture(0).release()
 
-        print('Cancelling...')
+        logging.info('Cancelling...')
 
     def is_stopped(self):
         return self._stop_event.is_set()
@@ -99,8 +113,16 @@ class CameraController(threading.Thread):
         return self.image
 
     def get_splitter_image(self):
-        if picamera_exists:
-            pass
-        else:
-            return self.splitter_image
+        logging.info("Requested splitter image.")
+        if self.use_splitter_port:
+            if picamera_exists:
+                s = self.picamera_splitter_stream.next()
+                self.picamera_splitter_capture.truncate(0)
+                self.picamera_splitter_capture.seek(0)
+                return s.array
 
+            else:
+                return self.splitter_image
+        else:
+            logging.warning("Splitter image was not opened in constructor.")
+            return None
