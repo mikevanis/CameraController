@@ -1,3 +1,7 @@
+import os
+os.chdir("/home/pi/CameraController/tests")
+import sys
+sys.path.append('..')
 from CameraController import CameraController
 import cv2
 import imutils

@@ -102,7 +102,8 @@ class CameraController(threading.Thread):
         return self._stop_event.is_set()
 
     def get_image(self):
-        return self.image.copy()
+        if self.image is not None:
+            return self.image.copy()
 
     # Get splitter image
     def get_splitter_image(self):
