@@ -1,9 +1,11 @@
-from CameraController import CameraController
 import cv2
+import sys
+sys.path.append('..')
+from CameraController import CameraController
 
 if __name__ == '__main__':
     # Create new instance
-    cam = CameraController(use_splitter_port=True)
+    cam = CameraController.CameraController(use_splitter_port=True)
     cam.start()
 
     try:

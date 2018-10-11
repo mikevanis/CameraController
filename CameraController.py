@@ -113,10 +113,16 @@ class CameraController(threading.Thread):
                 self.picamera_splitter_capture.truncate(0)
                 self.picamera_splitter_capture.seek(0)
                 s = self.picamera_splitter_stream.__next__()
-                return s.array.copy()
+                if s.array is not None:
+                    return s.array.copy()
+                else:
+                    return None
 
             else:
-                return self.splitter_image.copy()
+                if self.splitter_image is not None:
+                    return self.splitter_image.copy()
+                else:
+                    return None
         else:
             logging.warning("Splitter image was not opened in constructor.")
             return None
