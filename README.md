@@ -14,4 +14,4 @@ Designed for use with OpenCV 3.
 Run `python3 CameraControllerTest-Mac.py`. Exit with CTRL+C
 
 ### Raspberry Pi
-Coming soon...
+Run `python3 CameraControllerTest-Pi.py`. Exit with CTRL+C
